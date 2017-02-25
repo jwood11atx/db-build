@@ -12,7 +12,7 @@ var {firebase, database} = require("./firebase")
 
 var db = { Designers: {},
                  Artists: {},
-                //  Publishers: {},
+                 Publishers: {},
                  Categories: {},
                  Mechanisms: {},
                  Family: {}
@@ -23,7 +23,7 @@ function getIndex(arr, str1, str2){
 }
 
 
-function convertToObj(arr, id, entry){
+function convertToObj(arr, id){
   var designersIndex = getIndex(arr, "Designers", "Designer");
   var artistsIndex = getIndex(arr, "Artists", "Artist");
   var publishersIndex = getIndex(arr, "Publishers", "Publisher");
@@ -33,29 +33,20 @@ function convertToObj(arr, id, entry){
 
   var designersArr = arr.slice(designersIndex+1, artistsIndex);
   var artistsArr = arr.slice(artistsIndex+1, publishersIndex);
-  // var publishersArr = arr.slice(publishersIndex+1, categoriesIndex);
+  var publishersArr = arr.slice(publishersIndex+1, categoriesIndex);
   var categoriesArr = arr.slice(categoriesIndex+1, mechanismsIndex);
   var mechanismsArr = arr.slice(mechanismsIndex+1, familyIndex);
   var familyArr = arr.slice(familyIndex+1, arr.length);
 
+  database.ref(`Boardgames/${id}`)
+          .set(JSON.stringify(arr.slice(designersIndex, arr.length)));
 
-  // if(entry){
-  //   return { Designers: designersArr,
-  //            Artists: artistsArr,
-  //           //  Publishers: publishersArr,
-  //            Categories: categoriesArr,
-  //            Mechanisms: mechanismsArr,
-  //            Family: familyArr
-  //          }
-  // } else {
-    updateDatabase("Designers", cleanData(designersArr), id);
-    updateDatabase("Artists", cleanData(artistsArr), id);
-    // updateDatabase("Publishers", publishersArr, id);
-    updateDatabase("Categories", cleanData(categoriesArr), id);
-    updateDatabase("Mechanisms", cleanData(mechanismsArr), id);
-    updateDatabase("Family", cleanData(familyArr), id);
-  // }
-
+  updateDatabase("Designers", cleanData(designersArr), id);
+  updateDatabase("Artists", cleanData(artistsArr), id);
+  updateDatabase("Publishers", publishersArr, id);
+  updateDatabase("Categories", cleanData(categoriesArr), id);
+  updateDatabase("Mechanisms", cleanData(mechanismsArr), id);
+  updateDatabase("Family", cleanData(familyArr), id);
 }
 
 function cleanData(data){
@@ -71,19 +62,9 @@ function cleanData(data){
 
 function updateDatabase(key, arr, id){
   arr.forEach(function(e){
-  db[key][e] ? db[key][e].push(id) : db[key][e] = [id];
+    db[key][e] ? db[key][e].push(id) : db[key][e] = [id];
   })
-  // console.log(db);
-    // database.ref("Designers").set(JSON.stringify(db.Designers));
-    // database.ref("Artists").set(JSON.stringify(db.Artists));
-    // database.ref("Categories").set(JSON.stringify(db.Categories));
-    // database.ref("Mechanisms").set(JSON.stringify(db.Mechanisms));
-    // database.ref("Family").set(JSON.stringify(db.Family));
-    database.ref("Designers").set(db.Designers);
-    database.ref("Artists").set(db.Artists);
-    database.ref("Categories").set(db.Categories);
-    database.ref("Mechanisms").set(db.Mechanisms);
-    database.ref("Family").set(db.Family);
+  console.log(db);
 }
 
 // convertToObj(fakeScrapeData.stubDATA1, id1);
@@ -177,21 +158,11 @@ var driver = new webdriver.Builder()
     .forBrowser("firefox")
     .build();
 
-
-driver.get("https://boardgamegeek.com/browse/boardgame");
-driver.sleep(2000)
-  .then(function(){
-    return getURLs();
-  })
-    .then(function(urls){
-      console.log(urls);
-    })
-
 function getURLs(){
   var urls = [];
   driver.sleep(100)
     .then(function(){
-      for(var i=1; 100>=i; i++){
+      for(var i=27; 28>=i; i++){
         driver.findElement(By.css(`#results_objectname${i} > a`))
         .then(function(link){
           link.getAttribute("href")
@@ -204,19 +175,10 @@ function getURLs(){
   return urls;
 }
 
-function runMain(num){
-  driver.get("https://boardgamegeek.com/browse/boardgame");
+function getData(url){
+  driver.get(url);
 
-  driver.sleep(1000)
-    driver.findElement(By.css(`#results_objectname${num} > a`))
-      .then(function(link){
-        link.getAttribute("href")
-          .then(function(url){
-            driver.get(url + "/credits")
-          })
-      })
-
-  driver.sleep(1000)
+  driver.sleep(500)
   var bgArray = [];
   var bgID = null;
   driver.getCurrentUrl()
@@ -244,20 +206,58 @@ function runMain(num){
     var data = convertToObj(bgArray, bgID)
   })
 }
-//
-//
-// for(var i=8; 12>i; i++){
-//   runMain(i)
-// }
 
-driver.quit();
+function runMain(){
+  var path = "";
+  var count = 10;
+  for(var i=1; 2>=i; i++){
+    driver.sleep(100)
+      .then(function(){
+        if(count != 1){
+          path = `/page/${count}`
+        }
+        count++;
+        driver.get(`https://boardgamegeek.com/browse/boardgame${path}`)
+        .then(function(){
+          driver.sleep(2000)
+          .then(function(){
+            return getURLs();
+          })
+          .then(function(urls){
+            urls.forEach(function(url){
+              getData(url);
+            })
+          })
+        })
+      })
+
+    // driver.sleep(100)
+    // .then(function(){
+    //   driver.get(`https://boardgamegeek.com/browse/boardgame${path}`);
+    //   driver.sleep(2000)
+    // })
+    // .then(function(){
+    //   return getURLs();
+    // })
+    // .then(function(urls){
+    //   console.log(urls);
+    //   path = `/page/${i+1}`
+    //   // urls.forEach(function(url){
+    //   //   getData(url);
+    //   // })
+    // })
+  }
+}
+
+
+runMain();
+
+driver.quit()
+  .then(function(){
+    database.ref("Designers").set(db.Designers);
+    database.ref("Artists").set(db.Artists);
+    database.ref("Categories").set(db.Categories);
+    database.ref("Mechanisms").set(db.Mechanisms);
+    database.ref("Family").set(db.Family);
+  })
 // ^-----------------CODE IS GOOD---------------------^
-
-
-
-// driver.sleep(5000)
-// driver.navigate().back();
-// //
-// //
-// driver.sleep(5000)
-// driver.navigate().back();
