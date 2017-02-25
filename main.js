@@ -59,7 +59,7 @@ function convertToObj(arr, id, entry){
 }
 
 function cleanData(data){
-  if(data.isArray){
+  if(typeof data == "object"){
     return data.map(function(e){
       return e.split(/[\.#$/\]\[\s]/g).join("_");
     })
@@ -170,67 +170,87 @@ function recommendations(entryArr){
 //--------------------SCRAPE CODE---------------------//
 // v-----------------CODE IS GOOD---------------------v
 // //
-// var By = webdriver.By;
-// var until = webdriver.until;
+var By = webdriver.By;
+var until = webdriver.until;
+
+var driver = new webdriver.Builder()
+    .forBrowser("firefox")
+    .build();
+
+
+driver.get("https://boardgamegeek.com/browse/boardgame");
+driver.sleep(2000)
+  .then(function(){
+    return getURLs();
+  })
+    .then(function(urls){
+      console.log(urls);
+    })
+
+function getURLs(){
+  var urls = [];
+  driver.sleep(100)
+    .then(function(){
+      for(var i=1; 100>=i; i++){
+        driver.findElement(By.css(`#results_objectname${i} > a`))
+        .then(function(link){
+          link.getAttribute("href")
+          .then(function(url){
+            urls.push(url + "/credits")
+          })
+        })
+      }
+    })
+  return urls;
+}
+
+function runMain(num){
+  driver.get("https://boardgamegeek.com/browse/boardgame");
+
+  driver.sleep(1000)
+    driver.findElement(By.css(`#results_objectname${num} > a`))
+      .then(function(link){
+        link.getAttribute("href")
+          .then(function(url){
+            driver.get(url + "/credits")
+          })
+      })
+
+  driver.sleep(1000)
+  var bgArray = [];
+  var bgID = null;
+  driver.getCurrentUrl()
+  .then(function(url){
+    var urlArray = url.split("/");
+    bgID = urlArray[urlArray.indexOf("boardgame")+1]
+  })
+
+  driver.findElements(By.css(".outline-item"))
+  .then(function(arr){
+    arr.map(function(e){
+      e.getText()
+      .then(function(text){
+        bgArray.push(text);
+      })
+    })
+  })
+
+  driver.sleep(500)
+  .then(function(){
+    bgArray = bgArray.map(function(e){
+      return e.split("\n")
+    })
+    bgArray = bgArray.join(",").split(",");
+    var data = convertToObj(bgArray, bgID)
+  })
+}
 //
-// var driver = new webdriver.Builder()
-//     .forBrowser("firefox")
-//     .build();
 //
-//
-//
-//
-// function runMain(num){
-//   driver.get("https://boardgamegeek.com/browse/boardgame");
-//
-//   driver.sleep(3000)
-//     driver.findElement(By.css(`#results_objectname${num} > a`))
-//       .then(function(id){
-//         id.click()
-//       })
-//
-//   driver.sleep(3000)
-//   driver.getCurrentUrl()
-//     .then(function(url){
-//       driver.get(url + "/credits")
-//     })
-//
-//   driver.sleep(3000)
-//   var bgArray = [];
-//   var bgID = null;
-//   driver.getCurrentUrl()
-//   .then(function(url){
-//     var urlArray = url.split("/");
-//     bgID = urlArray[urlArray.indexOf("boardgame")+1]
-//   })
-//
-//   driver.findElements(By.css(".outline-item"))
-//   .then(function(arr){
-//     arr.map(function(e){
-//       e.getText()
-//       .then(function(text){
-//         bgArray.push(text);
-//       })
-//     })
-//   })
-//
-//   driver.sleep(3000)
-//   .then(function(){
-//     bgArray = bgArray.map(function(e){
-//       return e.split("\n")
-//     })
-//     bgArray = bgArray.join(",").split(",");
-//     var data = convertToObj(bgArray, bgID)
-//   })
-// }
-//
-//
-// for(var i=1; 5>i; i++){
+// for(var i=8; 12>i; i++){
 //   runMain(i)
 // }
-//
-//
-// driver.quit();
+
+driver.quit();
 // ^-----------------CODE IS GOOD---------------------^
 
 
