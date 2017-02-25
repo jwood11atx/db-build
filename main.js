@@ -9,19 +9,17 @@ var {firebase, database} = require("./firebase")
 //     id4 = "12333",
 //     id5 = "120677"
 
-
 var db = { Designers: {},
-                 Artists: {},
-                 Publishers: {},
-                 Categories: {},
-                 Mechanisms: {},
-                 Family: {}
-               }
+           Artists: {},
+           Publishers: {},
+           Categories: {},
+           Mechanisms: {},
+           Family: {}
+         }
 
 function getIndex(arr, str1, str2){
   return arr.indexOf(str1) != -1 ? arr.indexOf(str1) : arr.indexOf(str2)
 }
-
 
 function convertToObj(arr, id){
   var designersIndex = getIndex(arr, "Designers", "Designer");
@@ -38,8 +36,16 @@ function convertToObj(arr, id){
   var mechanismsArr = arr.slice(mechanismsIndex+1, familyIndex);
   var familyArr = arr.slice(familyIndex+1, arr.length);
 
+  var boardgameObj = { Designers: [designersArr],
+                       Artists: [artistsArr],
+                       Publishers: [publishersArr],
+                       Categories: [categoriesArr],
+                       Mechanisms: [mechanismsArr],
+                       Family: [familyArr]
+                     };
+
   database.ref(`Boardgames/${id}`)
-          .set(JSON.stringify(arr.slice(designersIndex, arr.length)));
+          .set(JSON.stringify(boardgameObj));
 
   updateDatabase("Designers", cleanData(designersArr), id);
   updateDatabase("Artists", cleanData(artistsArr), id);
@@ -47,6 +53,13 @@ function convertToObj(arr, id){
   updateDatabase("Categories", cleanData(categoriesArr), id);
   updateDatabase("Mechanisms", cleanData(mechanismsArr), id);
   updateDatabase("Family", cleanData(familyArr), id);
+
+  database.ref("Designers").set(db.Designers);
+  database.ref("Artists").set(db.Artists);
+  database.ref("Categories").set(db.Categories);
+  database.ref("Mechanisms").set(db.Mechanisms);
+  database.ref("Family").set(db.Family);
+
 }
 
 function cleanData(data){
@@ -59,12 +72,10 @@ function cleanData(data){
   }
 }
 
-
 function updateDatabase(key, arr, id){
   arr.forEach(function(e){
     db[key][e] ? db[key][e].push(id) : db[key][e] = [id];
   })
-  console.log(db);
 }
 
 // convertToObj(fakeScrapeData.stubDATA1, id1);
@@ -98,7 +109,7 @@ function updateDatabase(key, arr, id){
 
 
 
-//---------------------------------------------------------------------//
+//-------------THIS CODE BELONGS IN THE APP----------------//
 
 function recommendations(entryArr){
   var results = [];
@@ -124,26 +135,12 @@ function recommendations(entryArr){
     }
     return newObj;
   }, {})
-
   return results;
 }
 
 // var recommendationObj = recommendations([fakeEntry.stubENTRY1, fakeEntry.stubENTRY2]);
 //
 // console.log(recommendationObj);
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -155,23 +152,23 @@ var By = webdriver.By;
 var until = webdriver.until;
 
 var driver = new webdriver.Builder()
-    .forBrowser("firefox")
-    .build();
+.forBrowser("firefox")
+.build();
 
 function getURLs(){
   var urls = [];
   driver.sleep(100)
-    .then(function(){
-      for(var i=27; 28>=i; i++){
-        driver.findElement(By.css(`#results_objectname${i} > a`))
-        .then(function(link){
-          link.getAttribute("href")
-          .then(function(url){
-            urls.push(url + "/credits")
-          })
+  .then(function(){
+    for(var i=35; 36>=i; i++){
+      driver.findElement(By.css(`#results_objectname${i} > a`))
+      .then(function(link){
+        link.getAttribute("href")
+        .then(function(url){
+          urls.push(url + "/credits")
         })
-      }
-    })
+      })
+    }
+  })
   return urls;
 }
 
@@ -209,55 +206,32 @@ function getData(url){
 
 function runMain(){
   var path = "";
-  var count = 10;
+  var pageNum = 33;
   for(var i=1; 2>=i; i++){
     driver.sleep(100)
+    .then(function(){
+      if(pageNum != 1){
+        path = `/page/${pageNum}`
+      }
+      pageNum++;
+      driver.get(`https://boardgamegeek.com/browse/boardgame${path}`)
       .then(function(){
-        if(count != 1){
-          path = `/page/${count}`
-        }
-        count++;
-        driver.get(`https://boardgamegeek.com/browse/boardgame${path}`)
+        driver.sleep(2000)
         .then(function(){
-          driver.sleep(2000)
-          .then(function(){
-            return getURLs();
-          })
-          .then(function(urls){
-            urls.forEach(function(url){
-              getData(url);
-            })
+          return getURLs();
+        })
+        .then(function(urls){
+          urls.forEach(function(url){
+            getData(url);
           })
         })
       })
-
-    // driver.sleep(100)
-    // .then(function(){
-    //   driver.get(`https://boardgamegeek.com/browse/boardgame${path}`);
-    //   driver.sleep(2000)
-    // })
-    // .then(function(){
-    //   return getURLs();
-    // })
-    // .then(function(urls){
-    //   console.log(urls);
-    //   path = `/page/${i+1}`
-    //   // urls.forEach(function(url){
-    //   //   getData(url);
-    //   // })
-    // })
+    })
   }
 }
-
 
 runMain();
 
 driver.quit()
-  .then(function(){
-    database.ref("Designers").set(db.Designers);
-    database.ref("Artists").set(db.Artists);
-    database.ref("Categories").set(db.Categories);
-    database.ref("Mechanisms").set(db.Mechanisms);
-    database.ref("Family").set(db.Family);
-  })
+
 // ^-----------------CODE IS GOOD---------------------^
